@@ -1,7 +1,7 @@
-name: Reusable Kaniko Build and Push
+name: Reusable buildkit Build and Push
 
 description: >
-  Build and push Docker images to AWS ECR or Azure ACR using Kaniko. Supports both pod identity and credential-based login.
+  Build and push Docker images to AWS ECR or Azure ACR using buildkit. Supports both pod identity and credential-based login.
 
 on:
   workflow_call:
@@ -29,7 +29,7 @@ on:
         type: string
 
       extra_args:
-        description: 'Additional Kaniko args'
+        description: 'Additional buildkit args'
         default: ""
         required: false
         type: string
@@ -93,7 +93,7 @@ jobs:
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-    name: Build and Push Image with Kaniko
+    name: Build and Push Image with buildkit
 
     steps:
       - name: 🔄 Checkout code
