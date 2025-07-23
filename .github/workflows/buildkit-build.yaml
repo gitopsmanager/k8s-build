@@ -114,9 +114,29 @@ jobs:
           REGISTRY_NAME=$(echo "${{ inputs.azure_registry }}" | cut -d. -f1)
           az acr login --name "$REGISTRY_NAME"
 
-      - name: 🔐 ECR Login (if selected)
-        if: inputs.push_aws == true
+      - name: 🔐 Conditional ECR Login (Pod Identity or Secrets)
+        if: >
+          secrets.AWS_ACCESS_KEY_ID != '' &&
+          secrets.AWS_SECRET_ACCESS_KEY != ''
         uses: aws-actions/amazon-ecr-login@v1
+        with:
+          mask-password: true
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+          AWS_DEFAULT_REGION: ${{ inputs.aws_region }}
+
+      - name: 🔐 ECR Login via Pod Identity (fallback)
+        if: >
+          secrets.AWS_ACCESS_KEY_ID == '' ||
+          secrets.AWS_SECRET_ACCESS_KEY == ''
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          mask-password: true
+        env:
+          AWS_DEFAULT_REGION: ${{ inputs.aws_region }}
+
 
       - name: 🔧 Install rsync
         run: |
