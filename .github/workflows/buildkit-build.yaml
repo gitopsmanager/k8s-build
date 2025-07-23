@@ -143,9 +143,10 @@ jobs:
 
       - name: 📥 Install BuildKit
         run: |
-          curl -LO https://github.com/moby/buildkit/releases/download/v0.12.4/buildctl-linux-amd64
-          chmod +x buildctl-linux-amd64
-          sudo mv buildctl-linux-amd64 /usr/local/bin/buildctl
+          curl -LO https://github.com/moby/buildkit/releases/download/v0.23.2/buildkit-v0.23.2.linux-amd64
+          chmod +x buildkit-v0.23.2.linux-amd64
+          sudo mv buildkit-v0.23.2.linux-amd64 /usr/local/bin/buildctl
+
 
       - name: 🔧 Build list of output image targets
         id: output_tags
