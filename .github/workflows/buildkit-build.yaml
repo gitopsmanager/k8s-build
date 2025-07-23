@@ -182,7 +182,19 @@ jobs:
       - name: 🏗️ Build and push image(s)
         if: env.OUTPUT_NAMES != ''
         run: |
-          sudo buildkitd
+
+          sudo buildkitd > /tmp/buildkitd.log 2>&1 &
+          
+          # Wait for the socket to become available
+          tries=0
+          until [ -S /run/buildkit/buildkitd.sock ] || [ "$tries" -gt 10 ]; do
+            sleep 0.5
+            tries=$((tries + 1))
+          done
+
+          echo "✅ buildkitd started"
+          cat /tmp/buildkitd.log | tail -n 20 || true
+
           buildctl build \
             --frontend=dockerfile.v0 \
             --local context=${{ github.workspace }}/buildkit-context \
