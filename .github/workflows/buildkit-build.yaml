@@ -162,7 +162,11 @@ jobs:
             fi
             OUTPUT_NAMES+="name=${{ inputs.azure_registry }}/${{ inputs.image }}:${{ env.IMAGE_TAG }}"
           fi
+          if [[ -n "$OUTPUT_NAMES" ]]; then
+            OUTPUT_NAMES+=",push=true"
+          fi
           echo "OUTPUT_NAMES=$OUTPUT_NAMES" >> $GITHUB_ENV
+
 
 
       - name: 🏗️ Build and push image(s)
@@ -172,7 +176,7 @@ jobs:
             --frontend=dockerfile.v0 \
             --local context=${{ github.workspace }}/buildkit-context \
             --local dockerfile=${{ github.workspace }}/buildkit-context \
-            --output type=image,${OUTPUT_NAMES},push=true \
+            --output type=image,${{ env.OUTPUT_NAMES }} \
             --opt filename=${{ inputs.build_file || 'Dockerfile' }} \
             ${{ inputs.extra_args }} \
             ${{ env.ADDITIONAL_TAGS }}
