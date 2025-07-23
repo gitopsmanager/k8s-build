@@ -183,7 +183,10 @@ jobs:
         if: env.OUTPUT_NAMES != ''
         run: |
 
-          sudo buildkitd > /tmp/buildkitd.log 2>&1 &
+          sudo buildkitd \
+            --addr unix:///run/buildkit/buildkitd.sock \
+            --group $(id -g) \
+            > /tmp/buildkitd.log 2>&1 &
           
           # Wait for the socket to become available
           tries=0
