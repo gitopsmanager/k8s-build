@@ -126,8 +126,8 @@ jobs:
       - name: 🔐 ACR Login (if selected)
         if: inputs.push_azure == true
         run: |
-          az acr login --name ${{ inputs.azure_registry %% '.azurecr.io' }}
-
+          REGISTRY_NAME=$(echo "${{ inputs.azure_registry }}" | cut -d. -f1)
+          az acr login --name "$REGISTRY_NAME"
 
       - name: 🏋️ Build image with Kaniko (no push)
         run: |
