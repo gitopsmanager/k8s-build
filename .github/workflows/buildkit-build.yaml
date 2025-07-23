@@ -71,6 +71,7 @@ on:
       using_aws_secrets:
         required: false
         default: false
+        type: boolean
 
     secrets:
       AZURE_CLIENT_ID:
