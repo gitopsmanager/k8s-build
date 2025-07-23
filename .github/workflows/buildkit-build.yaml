@@ -93,22 +93,11 @@ jobs:
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-    name: Build and Push Image with buildkit
+    name: Build and Push Image using Buildx
 
     steps:
       - name: 🔄 Checkout code
         uses: actions/checkout@v4
-
-      - name: ✨ Compute image tag(s)
-        id: tags
-        run: |
-          echo "RUN_ID_TAG=${{ github.run_id }}" >> $GITHUB_ENV
-
-          if [ -n "${{ inputs.tag }}" ]; then
-            echo "IMAGE_TAG=${{ inputs.tag }}" >> $GITHUB_ENV
-          fi
-
-
 
 
       - name: 🔐 Azure Login (if selected)
@@ -125,7 +114,11 @@ jobs:
           REGISTRY_NAME=$(echo "${{ inputs.azure_registry }}" | cut -d. -f1)
           az acr login --name "$REGISTRY_NAME"
 
-      - name: 🔧 Install rsync (apt or yum)
+      - name: 🔐 ECR Login (if selected)
+        if: inputs.push_aws == true
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: 🔧 Install rsync
         run: |
           if command -v apt-get &>/dev/null; then
             sudo apt-get update && sudo apt-get install -y rsync
@@ -136,74 +129,45 @@ jobs:
             exit 1
           fi
 
-      - name: 📂 Prepare BuildKit build context
+      - name: 📂 Prepare Build Context
         run: |
           mkdir -p ${{ github.workspace }}/buildkit-context
           rsync -av --exclude=buildkit-context ./ ${{ github.workspace }}/buildkit-context/
 
-      - name: 📥 Install BuildKit (buildctl)
-        run: |
-          curl -LO https://github.com/moby/buildkit/releases/download/v0.23.2/buildkit-v0.23.2.linux-amd64.tar.gz
-          tar -xzf buildkit-v0.23.2.linux-amd64.tar.gz
-          sudo mv bin/buildctl bin/buildkitd /usr/local/bin/
-
-
-      - name: 🔧 Build list of output image targets
+      - name: 🔧 Compute Docker image tags
         id: output_tags
         run: |
-          OUTPUT_NAMES=""
+          TAGS=""
 
           if [[ "${{ inputs.push_aws }}" == "true" ]]; then
-            OUTPUT_NAMES="name=${{ inputs.aws_registry }}/${{ inputs.image }}:${{ env.RUN_ID_TAG }}"
-            if [[ -n "${{ env.IMAGE_TAG }}" ]]; then
-              OUTPUT_NAMES+=",name=${{ inputs.aws_registry }}/${{ inputs.image }}:${{ env.IMAGE_TAG }}"
+            TAGS="${{ inputs.aws_registry }}/${{ inputs.image }}:${{ github.run_id }}"
+            if [[ -n "${{ inputs.tag }}" ]]; then
+              TAGS+="\n${{ inputs.aws_registry }}/${{ inputs.image }}:${{ inputs.tag }}"
             fi
           fi
 
           if [[ "${{ inputs.push_azure }}" == "true" ]]; then
-            if [[ -n "$OUTPUT_NAMES" ]]; then
-              OUTPUT_NAMES+=","
-            fi
-            OUTPUT_NAMES+="name=${{ inputs.azure_registry }}/${{ inputs.image }}:${{ env.RUN_ID_TAG }}"
-            if [[ -n "${{ env.IMAGE_TAG }}" ]]; then
-              OUTPUT_NAMES+=",name=${{ inputs.azure_registry }}/${{ inputs.image }}:${{ env.IMAGE_TAG }}"
+            if [[ -n "$TAGS" ]]; then TAGS+="\n"; fi
+            TAGS+="${{ inputs.azure_registry }}/${{ inputs.image }}:${{ github.run_id }}"
+            if [[ -n "${{ inputs.tag }}" ]]; then
+              TAGS+="\n${{ inputs.azure_registry }}/${{ inputs.image }}:${{ inputs.tag }}"
             fi
           fi
 
-          if [[ -n "$OUTPUT_NAMES" ]]; then
-            OUTPUT_NAMES+=",push=true"
-          fi
+          echo "tags<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$TAGS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
-          echo "OUTPUT_NAMES=$OUTPUT_NAMES" >> $GITHUB_ENV
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-
-
-
-      - name: 🏗️ Build and push image(s)
-        if: env.OUTPUT_NAMES != ''
-        run: |
-
-          sudo buildkitd \
-            --addr unix:///run/buildkit/buildkitd.sock \
-            --group $(id -g) \
-            > /tmp/buildkitd.log 2>&1 &
-          
-          # Wait for the socket to become available
-          tries=0
-          until [ -S /run/buildkit/buildkitd.sock ] || [ "$tries" -gt 10 ]; do
-            sleep 0.5
-            tries=$((tries + 1))
-          done
-
-          echo "✅ buildkitd started"
-          cat /tmp/buildkitd.log | tail -n 20 || true
-
-          sudo buildctl build \
-            --frontend=dockerfile.v0 \
-            --local context=${{ github.workspace }}/buildkit-context \
-            --local dockerfile=${{ github.workspace }}/buildkit-context \
-            --output type=image,${{ env.OUTPUT_NAMES }} \
-            --opt filename=${{ inputs.build_file || 'Dockerfile' }} \
-            ${{ inputs.extra_args }} \
-            ${{ env.ADDITIONAL_TAGS }}
+      - name: 🏗️ Build and Push image(s)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./buildkit-context
+          file: ./buildkit-context/${{ inputs.build_file || 'Dockerfile' }}
+          push: true
+          tags: ${{ steps.output_tags.outputs.tags }}
+          build-args: |
+            ${{ inputs.extra_args }}
 
