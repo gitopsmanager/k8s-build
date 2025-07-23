@@ -125,6 +125,18 @@ jobs:
           REGISTRY_NAME=$(echo "${{ inputs.azure_registry }}" | cut -d. -f1)
           az acr login --name "$REGISTRY_NAME"
 
+      - name: 🔧 Install rsync (apt or yum)
+        run: |
+          if command -v apt-get &>/dev/null; then
+            sudo apt-get update && sudo apt-get install -y rsync
+          elif command -v yum &>/dev/null; then
+            sudo yum install -y rsync
+          else
+            echo "❌ No supported package manager found for rsync." >&2
+            exit 1
+          fi
+
+
       - name: 📂 Prepare Kaniko build context
         run: |
           mkdir -p ${{ github.workspace }}/kaniko-context
