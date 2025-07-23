@@ -131,7 +131,7 @@ jobs:
       - name: 🔐 ECR login using Pod Identity
         if: inputs.push_aws == true
         run: |
-          aws ecr get-login-password --region $AWS_DEFAULT_REGION \
+          aws ecr get-login-password --region ${{ inputs.aws_region }} \
             | docker login --username AWS --password-stdin ${{ inputs.aws_registry }}
         env:
           AWS_DEFAULT_REGION: ${{ inputs.aws_region }}
