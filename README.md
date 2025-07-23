@@ -73,9 +73,12 @@ If you are using GitHub ARC (Actions Runner Controller) with self-hosted runners
 - This workflow uses `docker run` to execute the Kaniko container
 - You must either:
   - Use a custom ARC runner image that includes Docker
-  - Or mount the Docker socket from the host (not recommended in multi-tenant environments)
+  - Or mount the Docker socket from the host  
+    *(safe only in single-tenant or isolated node pools)*
 
-Example pod override for mounting the Docker socket:
+Mounting the Docker socket gives the container full control of the Docker daemon and should **not** be used in shared Kubernetes environments.
+
+Example pod override to mount the Docker socket:
 ```yaml
 volumeMounts:
   - name: docker-sock
