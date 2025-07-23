@@ -148,7 +148,7 @@ jobs:
             -v ${{ github.workspace }}/kaniko-context:/workspace \
             -v /tmp/kaniko-cache:/cache \
             -v $HOME/.docker:/kaniko/.docker \
-            gcr.io/chainguard-images/kaniko-project/executor:v1.25.0 \
+            cgr.dev/chainguard/kaniko:v1.25.0 \
             --context=dir:///workspace \
             --dockerfile=${{ inputs.build_file || 'Dockerfile' }} \
             --no-push \
@@ -160,7 +160,7 @@ jobs:
         run: |
           docker run --rm \
             -v ${{ github.workspace }}/kaniko-context:/workspace \
-            gcr.io/chainguard-images/kaniko-project/executor:v1.25.0 \
+            cgr.dev/chainguard/kaniko:v1.25.0 \
             --context=dir:///workspace \
             --dockerfile=${{ inputs.build_file || 'Dockerfile' }} \
             --destination=${{ inputs.aws_registry }}/${{ inputs.image }}:${{ env.IMAGE_TAG }} \
@@ -174,7 +174,7 @@ jobs:
           docker run --rm \
             -v ${{ github.workspace }}/kaniko-context:/workspace \
             -v $HOME/.docker:/kaniko/.docker \
-            gcr.io/chainguard-images/kaniko-project/executor:v1.25.0 \
+            cgr.dev/chainguard/kaniko:v1.25.0 \
             --context=dir:///workspace \
             --dockerfile=${{ inputs.build_file || 'Dockerfile' }} \
             --destination=${{ inputs.azure_registry }}/${{ inputs.image }}:${{ env.IMAGE_TAG }} \
