@@ -145,7 +145,7 @@ jobs:
         run: |
           curl -LO https://github.com/moby/buildkit/releases/download/v0.23.2/buildkit-v0.23.2.linux-amd64.tar.gz
           tar -xzf buildkit-v0.23.2.linux-amd64.tar.gz
-          sudo mv buildctl /usr/local/bin/
+          sudo mv bin/buildctl /usr/local/bin/
 
 
 
