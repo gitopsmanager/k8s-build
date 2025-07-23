@@ -115,15 +115,19 @@ jobs:
           mkdir -p /kaniko/context
           cp -r ${{ inputs.path }}/* /kaniko/context/
 
-      - name: 🔐 Login to Azure ACR (if selected)
+      - name: 🔐 Azure Login (if selected)
+        if: inputs.push_azure == true
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+      - name: 🔐 ACR Login (if selected)
         if: inputs.push_azure == true
         run: |
-          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-          az login --service-principal \
-            -u ${{ secrets.AZURE_CLIENT_ID }} \
-            -p ${{ secrets.AZURE_CLIENT_SECRET }} \
-            --tenant ${{ secrets.AZURE_TENANT_ID }}
           az acr login --name ${{ inputs.azure_registry %% '.azurecr.io' }}
+
 
       - name: 🏋️ Build image with Kaniko (no push)
         run: |
