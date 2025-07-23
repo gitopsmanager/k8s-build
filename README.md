@@ -49,7 +49,7 @@ These are only needed if your runners do not use pod identity (AWS) or managed i
 |--------|---------|---------|
 | [actions/checkout](https://github.com/actions/checkout) | `v4` | Clones your repo for context |
 | [azure/login](https://github.com/Azure/login) | `v1` | Secure Azure authentication for ACR |
-| [Kaniko (Chainguard)](https://github.com/chainguard-images/kaniko-project) | latest | Container-based Docker image builder |
+| [Kaniko (Chainguard)](https://github.com/chainguard-images/kaniko-project) | `v1.25.0` | Container-based Docker image builder |
 
 ---
 
