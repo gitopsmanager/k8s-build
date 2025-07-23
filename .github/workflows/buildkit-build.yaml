@@ -147,10 +147,6 @@ jobs:
           tar -xzf buildkit-v0.23.2.linux-amd64.tar.gz
           sudo mv bin/buildctl bin/buildkitd /usr/local/bin/
 
-      - name: 🚀 Start buildkitd daemon
-        run: |
-          sudo nohup buildkitd > /tmp/buildkitd.log 2>&1 &
-
 
       - name: 🔧 Build list of output image targets
         id: output_tags
@@ -186,6 +182,7 @@ jobs:
       - name: 🏗️ Build and push image(s)
         if: env.OUTPUT_NAMES != ''
         run: |
+          sudo buildkitd
           buildctl build \
             --frontend=dockerfile.v0 \
             --local context=${{ github.workspace }}/buildkit-context \
