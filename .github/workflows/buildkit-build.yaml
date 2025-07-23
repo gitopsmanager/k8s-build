@@ -68,6 +68,10 @@ on:
         default: 'ubuntu-latest'
         type: string
 
+      using_aws_secrets:
+        required: false
+        default: false
+
     secrets:
       AZURE_CLIENT_ID:
         required: false
@@ -114,10 +118,8 @@ jobs:
           REGISTRY_NAME=$(echo "${{ inputs.azure_registry }}" | cut -d. -f1)
           az acr login --name "$REGISTRY_NAME"
 
-      - name: 🔐 Conditional ECR Login (Pod Identity or Secrets)
-        if: >
-          secrets.AWS_ACCESS_KEY_ID != '' &&
-          secrets.AWS_SECRET_ACCESS_KEY != ''
+      - name: 🔐 ECR Login using secrets
+        if: inputs.using_aws_secrets == 'true'
         uses: aws-actions/amazon-ecr-login@v1
         with:
           mask-password: true
@@ -127,15 +129,14 @@ jobs:
           AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
           AWS_DEFAULT_REGION: ${{ inputs.aws_region }}
 
-      - name: 🔐 ECR Login via Pod Identity (fallback)
-        if: >
-          secrets.AWS_ACCESS_KEY_ID == '' ||
-          secrets.AWS_SECRET_ACCESS_KEY == ''
+      - name: 🔐 ECR Login using Pod Identity (fallback)
+        if: inputs.using_aws_secrets != 'true'
         uses: aws-actions/amazon-ecr-login@v1
         with:
           mask-password: true
         env:
           AWS_DEFAULT_REGION: ${{ inputs.aws_region }}
+
 
 
       - name: 🔧 Install rsync
