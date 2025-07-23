@@ -198,7 +198,7 @@ jobs:
           echo "✅ buildkitd started"
           cat /tmp/buildkitd.log | tail -n 20 || true
 
-          buildctl build \
+          sudo buildctl build \
             --frontend=dockerfile.v0 \
             --local context=${{ github.workspace }}/buildkit-context \
             --local dockerfile=${{ github.workspace }}/buildkit-context \
