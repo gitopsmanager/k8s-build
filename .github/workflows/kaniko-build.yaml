@@ -129,47 +129,47 @@ jobs:
           REGISTRY_NAME=$(echo "${{ inputs.azure_registry }}" | cut -d. -f1)
           az acr login --name "$REGISTRY_NAME"
 
-- name: 📂 Prepare Kaniko build context
-  run: |
-    mkdir -p ${{ github.workspace }}/kaniko-context
-    cp -r ${{ inputs.path }}/* ${{ github.workspace }}/kaniko-context/
+      - name: 📂 Prepare Kaniko build context
+        run: |
+          mkdir -p ${{ github.workspace }}/kaniko-context
+          cp -r ${{ inputs.path }}/* ${{ github.workspace }}/kaniko-context/
 
-- name: 🏋️ Build image with Kaniko (no push)
-  run: |
-    docker run --rm \
-      -v ${{ github.workspace }}/kaniko-context:/workspace \
-      -v /tmp/kaniko-cache:/cache \
-      -v $HOME/.docker:/kaniko/.docker \
-      gcr.io/chainguard-images/kaniko-project/executor:v1.25.0 \
-      --context=dir:///workspace \
-      --dockerfile=${{ inputs.build_file || 'Dockerfile' }} \
-      --no-push \
-      --cache=true \
-      ${{ inputs.extra_args }}
+      - name: 🏋️ Build image with Kaniko (no push)
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/kaniko-context:/workspace \
+            -v /tmp/kaniko-cache:/cache \
+            -v $HOME/.docker:/kaniko/.docker \
+            gcr.io/chainguard-images/kaniko-project/executor:v1.25.0 \
+            --context=dir:///workspace \
+            --dockerfile=${{ inputs.build_file || 'Dockerfile' }} \
+            --no-push \
+            --cache=true \
+            ${{ inputs.extra_args }}
 
-- name: 🇺🇸 Push to AWS ECR (if enabled)
-  if: inputs.push_aws == true
-  run: |
-    docker run --rm \
-      -v ${{ github.workspace }}/kaniko-context:/workspace \
-      gcr.io/chainguard-images/kaniko-project/executor:v1.25.0 \
-      --context=dir:///workspace \
-      --dockerfile=${{ inputs.build_file || 'Dockerfile' }} \
-      --destination=${{ inputs.aws_registry }}/${{ inputs.image }}:${{ env.IMAGE_TAG }} \
-      ${{ env.ADDITIONAL_TAGS }} \
-      --cache=true \
-      ${{ inputs.extra_args }}
+      - name: 🇺🇸 Push to AWS ECR (if enabled)
+        if: inputs.push_aws == true
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/kaniko-context:/workspace \
+            gcr.io/chainguard-images/kaniko-project/executor:v1.25.0 \
+            --context=dir:///workspace \
+            --dockerfile=${{ inputs.build_file || 'Dockerfile' }} \
+            --destination=${{ inputs.aws_registry }}/${{ inputs.image }}:${{ env.IMAGE_TAG }} \
+            ${{ env.ADDITIONAL_TAGS }} \
+            --cache=true \
+            ${{ inputs.extra_args }}
 
-- name: 🇦🇺 Push to Azure ACR (if enabled)
-  if: inputs.push_azure == true
-  run: |
-    docker run --rm \
-      -v ${{ github.workspace }}/kaniko-context:/workspace \
-      -v $HOME/.docker:/kaniko/.docker \
-      gcr.io/chainguard-images/kaniko-project/executor:v1.25.0 \
-      --context=dir:///workspace \
-      --dockerfile=${{ inputs.build_file || 'Dockerfile' }} \
-      --destination=${{ inputs.azure_registry }}/${{ inputs.image }}:${{ env.IMAGE_TAG }} \
-      ${{ env.ADDITIONAL_TAGS }} \
-      --cache=true \
-      ${{ inputs.extra_args }}
+      - name: 🇦🇺 Push to Azure ACR (if enabled)
+        if: inputs.push_azure == true
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/kaniko-context:/workspace \
+            -v $HOME/.docker:/kaniko/.docker \
+            gcr.io/chainguard-images/kaniko-project/executor:v1.25.0 \
+            --context=dir:///workspace \
+            --dockerfile=${{ inputs.build_file || 'Dockerfile' }} \
+            --destination=${{ inputs.azure_registry }}/${{ inputs.image }}:${{ env.IMAGE_TAG }} \
+            ${{ env.ADDITIONAL_TAGS }} \
+            --cache=true \
+            ${{ inputs.extra_args }}
