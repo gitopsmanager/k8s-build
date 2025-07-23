@@ -65,6 +65,28 @@ You can configure runner labels via the `runner` input.
 
 ---
 
+## ⚠️ GitHub ARC Runner Note
+
+If you are using GitHub ARC (Actions Runner Controller) with self-hosted runners, be aware:
+
+- The default `latest` GitHub ARC runner image **does not include Docker**
+- This workflow uses `docker run` to execute the Kaniko container
+- You must either:
+  - Use a custom ARC runner image that includes Docker
+  - Or mount the Docker socket from the host (not recommended in multi-tenant environments)
+
+Example pod override for mounting the Docker socket:
+```yaml
+volumeMounts:
+  - name: docker-sock
+    mountPath: /var/run/docker.sock
+volumes:
+  - name: docker-sock
+    hostPath:
+      path: /var/run/docker.sock
+
+---
+
 ## 🏗 How It Works: Single Build, Multi-Registry Push
 
 This workflow performs the build **once** using Kaniko with `--no-push`, which:
@@ -107,8 +129,6 @@ jobs:
       push_azure: true
       runner: aws-linux-self-hosted-build-runner
     secrets:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
