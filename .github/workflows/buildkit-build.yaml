@@ -102,13 +102,14 @@ jobs:
       - name: ✨ Compute image tag(s)
         id: tags
         run: |
+          echo "RUN_ID_TAG=${{ github.run_id }}" >> $GITHUB_ENV
+
           if [ -z "${{ inputs.tag }}" ]; then
-            echo "IMAGE_TAG=${{ github.run_id }}" >> $GITHUB_ENV
-            echo "ADDITIONAL_TAGS=" >> $GITHUB_ENV
+            echo "IMAGE_TAG=" >> $GITHUB_ENV
           else
             echo "IMAGE_TAG=${{ inputs.tag }}" >> $GITHUB_ENV
-            echo "ADDITIONAL_TAGS=--destination=${{ inputs.aws_registry }}/${{ inputs.image }}:${{ github.run_id }}" >> $GITHUB_ENV
           fi
+
 
 
       - name: 🔐 Azure Login (if selected)
@@ -153,19 +154,30 @@ jobs:
         id: output_tags
         run: |
           OUTPUT_NAMES=""
+
           if [[ "${{ inputs.push_aws }}" == "true" ]]; then
-            OUTPUT_NAMES="name=${{ inputs.aws_registry }}/${{ inputs.image }}:${{ env.IMAGE_TAG }}"
+            OUTPUT_NAMES="name=${{ inputs.aws_registry }}/${{ inputs.image }}:${{ env.RUN_ID_TAG }}"
+            if [[ -n "${{ env.IMAGE_TAG }}" ]]; then
+              OUTPUT_NAMES+=",name=${{ inputs.aws_registry }}/${{ inputs.image }}:${{ env.IMAGE_TAG }}"
+            fi
           fi
+
           if [[ "${{ inputs.push_azure }}" == "true" ]]; then
             if [[ -n "$OUTPUT_NAMES" ]]; then
               OUTPUT_NAMES+=","
             fi
-            OUTPUT_NAMES+="name=${{ inputs.azure_registry }}/${{ inputs.image }}:${{ env.IMAGE_TAG }}"
+            OUTPUT_NAMES+="name=${{ inputs.azure_registry }}/${{ inputs.image }}:${{ env.RUN_ID_TAG }}"
+            if [[ -n "${{ env.IMAGE_TAG }}" ]]; then
+              OUTPUT_NAMES+=",name=${{ inputs.azure_registry }}/${{ inputs.image }}:${{ env.IMAGE_TAG }}"
+            fi
           fi
+
           if [[ -n "$OUTPUT_NAMES" ]]; then
             OUTPUT_NAMES+=",push=true"
           fi
+
           echo "OUTPUT_NAMES=$OUTPUT_NAMES" >> $GITHUB_ENV
+
 
 
 
