@@ -136,48 +136,42 @@ jobs:
             exit 1
           fi
 
-
-      - name: 📂 Prepare Kaniko build context
+      - name: 📂 Prepare BuildKit build context
         run: |
-          mkdir -p ${{ github.workspace }}/kaniko-context
-          rsync -av --exclude=kaniko-context ./ ${{ github.workspace }}/kaniko-context/
+          mkdir -p ${{ github.workspace }}/buildkit-context
+          rsync -av --exclude=buildkit-context ./ ${{ github.workspace }}/buildkit-context/
 
-      - name: 🏋️ Build image with Kaniko (no push)
+      - name: 📥 Install BuildKit
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}/kaniko-context:/workspace \
-            -v /tmp/kaniko-cache:/cache \
-            -v $HOME/.docker:/kaniko/.docker \
-            cgr.dev/chainguard/kaniko:latest \
-            --context=dir:///workspace \
-            --dockerfile=${{ inputs.build_file || 'Dockerfile' }} \
-            --no-push \
-            --cache=true \
-            ${{ inputs.extra_args }}
+          curl -LO https://github.com/moby/buildkit/releases/download/v0.12.4/buildctl-linux-amd64
+          chmod +x buildctl-linux-amd64
+          sudo mv buildctl-linux-amd64 /usr/local/bin/buildctl
 
-      - name: 🇺🇸 Push to AWS ECR (if enabled)
-        if: inputs.push_aws == true
+      - name: 🔧 Build list of output image targets
+        id: output_tags
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}/kaniko-context:/workspace \
-            cgr.dev/chainguard/kaniko:latest \
-            --context=dir:///workspace \
-            --dockerfile=${{ inputs.build_file || 'Dockerfile' }} \
-            --destination=${{ inputs.aws_registry }}/${{ inputs.image }}:${{ env.IMAGE_TAG }} \
-            ${{ env.ADDITIONAL_TAGS }} \
-            --cache=true \
-            ${{ inputs.extra_args }}
+          OUTPUT_NAMES=""
+          if [[ "${{ inputs.push_aws }}" == "true" ]]; then
+            OUTPUT_NAMES="name=${{ inputs.aws_registry }}/${{ inputs.image }}:${{ env.IMAGE_TAG }}"
+          fi
+          if [[ "${{ inputs.push_azure }}" == "true" ]]; then
+            if [[ -n "$OUTPUT_NAMES" ]]; then
+              OUTPUT_NAMES+=","
+            fi
+            OUTPUT_NAMES+="name=${{ inputs.azure_registry }}/${{ inputs.image }}:${{ env.IMAGE_TAG }}"
+          fi
+          echo "OUTPUT_NAMES=$OUTPUT_NAMES" >> $GITHUB_ENV
 
-      - name: 🇦🇺 Push to Azure ACR (if enabled)
-        if: inputs.push_azure == true
+
+      - name: 🏗️ Build and push image(s)
+        if: env.OUTPUT_NAMES != ''
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}/kaniko-context:/workspace \
-            -v $HOME/.docker:/kaniko/.docker \
-            cgr.dev/chainguard/kaniko:latest \
-            --context=dir:///workspace \
-            --dockerfile=${{ inputs.build_file || 'Dockerfile' }} \
-            --destination=${{ inputs.azure_registry }}/${{ inputs.image }}:${{ env.IMAGE_TAG }} \
-            ${{ env.ADDITIONAL_TAGS }} \
-            --cache=true \
-            ${{ inputs.extra_args }}
+          buildctl build \
+            --frontend=dockerfile.v0 \
+            --local context=${{ github.workspace }}/buildkit-context \
+            --local dockerfile=${{ github.workspace }}/buildkit-context \
+            --output type=image,${OUTPUT_NAMES},push=true \
+            --opt filename=${{ inputs.build_file || 'Dockerfile' }} \
+            ${{ inputs.extra_args }} \
+            ${{ env.ADDITIONAL_TAGS }}
+
