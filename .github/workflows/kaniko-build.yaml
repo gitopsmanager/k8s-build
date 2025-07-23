@@ -128,7 +128,7 @@ jobs:
       - name: 📂 Prepare Kaniko build context
         run: |
           mkdir -p ${{ github.workspace }}/kaniko-context
-          cp -r ${{ inputs.path }}/* ${{ github.workspace }}/kaniko-context/
+          rsync -av --exclude=kaniko-context ./ ${{ github.workspace }}/kaniko-context/
 
       - name: 🏋️ Build image with Kaniko (no push)
         run: |
