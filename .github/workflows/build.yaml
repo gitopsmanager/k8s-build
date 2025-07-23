@@ -1,0 +1,158 @@
+name: Reusable Kaniko Build and Push
+
+description: >
+  Build and push Docker images to AWS ECR or Azure ACR using Kaniko. Supports both pod identity and credential-based login.
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        description: 'Path to the build context'
+        default: "."
+        required: false
+        type: string
+
+      image:
+        description: 'Image name (e.g. gitopsmanager)'
+        required: true
+        type: string
+
+      tag:
+        description: 'Tag for the image'
+        default: ""
+        required: false
+        type: string
+
+      build_file:
+        description: 'Full path to the Dockerfile (relative to context)'
+        required: false
+        type: string
+
+      extra_args:
+        description: 'Additional Kaniko args'
+        default: ""
+        required: false
+        type: string
+
+      aws_region:
+        description: 'AWS region (for ECR)'
+        default: "eu-west-1"
+        required: false
+        type: string
+
+      aws_registry:
+        description: 'AWS ECR registry hostname'
+        required: false
+        type: string
+
+      azure_registry:
+        description: 'Azure ACR registry hostname'
+        required: false
+        type: string
+
+      push_aws:
+        description: 'Whether to push to AWS ECR'
+        required: false
+        default: false
+        type: boolean
+
+      push_azure:
+        description: 'Whether to push to Azure ACR'
+        required: false
+        default: false
+        type: boolean
+
+      runner:
+        description: 'Runner label (e.g. ubuntu-latest or self-hosted)'
+        required: false
+        default: 'ubuntu-latest'
+        type: string
+
+    secrets:
+      AZURE_CLIENT_ID:
+        required: false
+      AZURE_CLIENT_SECRET:
+        required: false
+      AZURE_TENANT_ID:
+        required: false
+      AWS_ACCESS_KEY_ID:
+        required: false
+      AWS_SECRET_ACCESS_KEY:
+        required: false
+      AWS_SESSION_TOKEN:
+        required: false
+
+jobs:
+  build:
+    runs-on: ${{ inputs.runner }}
+    name: Build and Push Image with Kaniko
+
+    steps:
+      - name: 🔄 Checkout code
+        uses: actions/checkout@v4
+
+      - name: ✨ Compute image tag(s)
+        id: tags
+        run: |
+          if [ -z "${{ inputs.tag }}" ]; then
+            echo "IMAGE_TAG=${{ github.run_id }}" >> $GITHUB_ENV
+            echo "ADDITIONAL_TAGS=" >> $GITHUB_ENV
+          else
+            echo "IMAGE_TAG=${{ inputs.tag }}" >> $GITHUB_ENV
+            echo "ADDITIONAL_TAGS=--destination=${{ inputs.aws_registry }}/${{ inputs.image }}:${{ github.run_id }}" >> $GITHUB_ENV
+          fi
+
+      - name: 📂 Copy build context
+        run: |
+          mkdir -p /kaniko/context
+          cp -r ${{ inputs.path }}/* /kaniko/context/
+
+      - name: 🔐 Login to Azure ACR (if selected)
+        if: inputs.push_azure == true
+        run: |
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          az login --service-principal \
+            -u ${{ secrets.AZURE_CLIENT_ID }} \
+            -p ${{ secrets.AZURE_CLIENT_SECRET }} \
+            --tenant ${{ secrets.AZURE_TENANT_ID }}
+          az acr login --name ${{ inputs.azure_registry %% '.azurecr.io' }}
+
+      - name: 🏋️ Build image with Kaniko (no push)
+        run: |
+          docker run --rm \
+            -v /kaniko/context:/workspace \
+            -v /kaniko/cache:/cache \
+            -v $HOME/.docker:/kaniko/.docker \
+            gcr.io/chainguard-images/kaniko-project/executor \
+            --context=dir:///workspace \
+            --dockerfile=${{ inputs.build_file || 'Dockerfile' }} \
+            --no-push \
+            --cache=true \
+            ${{ inputs.extra_args }}
+
+      - name: 🇺🇸 Push to AWS ECR (if enabled)
+        if: inputs.push_aws == true
+        run: |
+          docker run --rm \
+            -v /kaniko/context:/workspace \
+            gcr.io/chainguard-images/kaniko-project/executor \
+            --context=dir:///workspace \
+            --dockerfile=${{ inputs.build_file || 'Dockerfile' }} \
+            --destination=${{ inputs.aws_registry }}/${{ inputs.image }}:${{ env.IMAGE_TAG }} \
+            ${{ env.ADDITIONAL_TAGS }} \
+            --cache=true \
+            ${{ inputs.extra_args }}
+
+      - name: 🇦🇺 Push to Azure ACR (if enabled)
+        if: inputs.push_azure == true
+        run: |
+          docker run --rm \
+            -v /kaniko/context:/workspace \
+            -v $HOME/.docker:/kaniko/.docker \
+            gcr.io/chainguard-images/kaniko-project/executor \
+            --context=dir:///workspace \
+            --dockerfile=${{ inputs.build_file || 'Dockerfile' }} \
+            --destination=${{ inputs.azure_registry }}/${{ inputs.image }}:${{ env.IMAGE_TAG }} \
+            ${{ env.ADDITIONAL_TAGS }} \
+            --cache=true \
+            ${{ inputs.extra_args }}
