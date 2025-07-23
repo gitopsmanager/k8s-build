@@ -141,11 +141,12 @@ jobs:
           mkdir -p ${{ github.workspace }}/buildkit-context
           rsync -av --exclude=buildkit-context ./ ${{ github.workspace }}/buildkit-context/
 
-      - name: 📥 Install BuildKit
+      - name: 📥 Install BuildKit (buildctl)
         run: |
-          curl -LO https://github.com/moby/buildkit/releases/download/v0.23.2/buildkit-v0.23.2.linux-amd64
-          chmod +x buildkit-v0.23.2.linux-amd64
-          sudo mv buildkit-v0.23.2.linux-amd64 /usr/local/bin/buildctl
+          curl -LO https://github.com/moby/buildkit/releases/download/v0.23.2/buildkit-v0.23.2.linux-amd64.tar.gz
+          tar -xzf buildkit-v0.23.2.linux-amd64.tar.gz
+          sudo mv buildctl /usr/local/bin/
+
 
 
       - name: 🔧 Build list of output image targets
