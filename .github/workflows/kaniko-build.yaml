@@ -110,10 +110,6 @@ jobs:
             echo "ADDITIONAL_TAGS=--destination=${{ inputs.aws_registry }}/${{ inputs.image }}:${{ github.run_id }}" >> $GITHUB_ENV
           fi
 
-      - name: 📂 Copy build context
-        run: |
-          mkdir -p /kaniko/context
-          cp -r ${{ inputs.path }}/* /kaniko/context/
 
       - name: 🔐 Azure Login (if selected)
         if: inputs.push_azure == true
