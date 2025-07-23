@@ -84,7 +84,7 @@ volumes:
   - name: docker-sock
     hostPath:
       path: /var/run/docker.sock
-
+```
 ---
 
 ## 🏗 How It Works: Single Build, Multi-Registry Push
