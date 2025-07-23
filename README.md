@@ -1,6 +1,7 @@
-# 🚀 Reusable GitHub Workflow: Multi-Cloud Docker Build with Kaniko
+# 🚀 Reusable GitHub Workflow: Multi-Cloud Docker Build with buildkit
 
-This reusable GitHub Actions workflow builds and pushes Docker images using [Kaniko](https://github.com/GoogleContainerTools/kaniko), with support for:
+This reusable GitHub Actions workflow builds and pushes Docker images using [BuildKit](https://github.com/moby/buildkit), with support for:
+
 
 - ✅ AWS ECR via Pod Identity or AWS secrets
 - ✅ Azure ACR via Azure service principal
@@ -18,7 +19,7 @@ This reusable GitHub Actions workflow builds and pushes Docker images using [Kan
 | `image`          | ✅        | string  | Docker image name (e.g. `gitopsmanager`) |
 | `tag`            | ❌        | string  | Optional tag. If omitted, uses GitHub `run_id`. If provided, both it and the `run_id` will be pushed |
 | `build_file`     | ❌        | string  | Path to the Dockerfile (relative to context) |
-| `extra_args`     | ❌        | string  | Additional flags passed to Kaniko |
+| `extra_args`     | ❌        | string  | Additional flags passed to buildkit |
 | `aws_region`     | ❌        | string  | AWS region for ECR (default: `eu-west-1`) |
 | `aws_registry`   | ❌        | string  | AWS ECR registry hostname |
 | `azure_registry` | ❌        | string  | Azure ACR registry hostname |
@@ -49,7 +50,7 @@ These are only needed if your runners do not use pod identity (AWS) or managed i
 |--------|---------|---------|
 | [actions/checkout](https://github.com/actions/checkout) | `v4` | Clones your repo for context |
 | [azure/login](https://github.com/Azure/login) | `v1` | Secure Azure authentication for ACR |
-| [Kaniko (Chainguard)](https://github.com/chainguard-images/kaniko-project) | `v1.25.0` | Container-based Docker image builder |
+
 
 ---
 
@@ -70,7 +71,7 @@ You can configure runner labels via the `runner` input.
 If you are using GitHub ARC (Actions Runner Controller) with self-hosted runners, be aware:
 
 - The default `latest` GitHub ARC runner image **does not include Docker**
-- This workflow uses `docker run` to execute the Kaniko container
+- This workflow uses `buildctl` to build the container
 - You must either:
   - Use a custom ARC runner image that includes Docker
   - Or mount the Docker socket from the host  
@@ -92,13 +93,14 @@ volumes:
 
 ## 🏗 How It Works: Single Build, Multi-Registry Push
 
-This workflow performs the build **once** using Kaniko with `--no-push`, which:
+This workflow performs the build **once** using BuildKit, and dynamically constructs the `--output` argument based on which registries (AWS and/or Azure) are enabled.
 
-- Builds the image from your `Dockerfile` into Kaniko’s cache
-- Avoids rebuilding the image for each registry
-- Then pushes to one or both targets (AWS ECR and/or Azure ACR) using `--destination`
+- Builds the image from your `Dockerfile` using `buildctl`
+- Dynamically includes one or more `name=...` targets in the `--output` flag
+- Pushes to AWS ECR and/or Azure ACR in a single efficient operation
 
-> ✅ This ensures efficient image building without repeating work for multiple clouds.
+> ✅ This ensures the image is built once and pushed to multiple registries without repeating or re-evaluating the build context.
+
 
 ---
 
@@ -121,7 +123,7 @@ This workflow is currently in **beta**. While the structure is stable and produc
 ```yaml
 jobs:
   build:
-    uses: your-org/k8s-build/.github/workflows/kaniko-build.yaml@v1
+    uses: your-org/k8s-build/.github/workflows/buildkit-build.yaml@v1
     with:
       path: .
       image: gitopsmanager
