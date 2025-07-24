@@ -1,12 +1,15 @@
-# 🚀 Reusable GitHub Workflow: Multi-Cloud Docker Build with BuildKit
+# 🚀 Reusable GitHub Workflow for Multi-Cloud Docker Image Builds (Docker or BuildKit)
 
-This reusable GitHub Actions workflow builds and pushes Docker images using [BuildKit](https://github.com/moby/buildkit), with support for:
+Build and push Docker images to AWS ECR or Azure ACR using Docker (on GitHub-hosted runners) or BuildKit (on self-hosted runners). Supports both pod-managed identity and credential-based authentication.
 
-- ✅ AWS ECR via Pod Identity or AWS credentials  
-- ✅ Azure ACR via Azure service principal  
+### Key Features
+
+- 🐳 **Docker** on GitHub-hosted runners  
+- 🏗️ **BuildKit** on GitHub ARC (self-hosted) runners  
+- ✅ AWS ECR via pod identity or IAM credentials  
+- ✅ Azure ACR via workload identity, node identity, or service principal  
 - ✅ Build once, push to AWS, Azure, or both  
-- ✅ GitHub-hosted and GitHub ARC (self-hosted) runners  
-- ✅ Automatic fallback tag using GitHub run ID  
+- ✅ Automatically tags images with the GitHub run ID, and optionally with a custom tag if provided.
 
 ---
 
@@ -151,17 +154,42 @@ jobs:
 | [docker/setup-buildx-action](https://github.com/docker/setup-buildx-action) | `v3` | Enables BuildKit for GitHub-hosted runners |
 | [docker/build-push-action](https://github.com/docker/build-push-action) | `v5` | Performs the BuildKit build and push |
 
+
 ---
 
-## 🧪 Versioning Strategy
+## 📦 Stable Version & Versioning Strategy
 
-This workflow is currently in **beta**. While it's stable and production-ready for most use cases, we recommend starting with pinned versions (e.g. `@v1`) as best practice.
+This workflow is now production-ready and follows [semantic versioning](https://semver.org/).
 
-| Version    | Description                         |
-|------------|-------------------------------------|
-| `v1`       | Stable major version                |
-| `v1.0.0`   | Exact pinned release for reproducibility |
-| `v2`, `v3` | Reserved for future breaking changes |
+### ✅ Current Stable Release
+
+- **Tag:** `v1`
+- **Pinned Version:** `v1.0.0`
+
+Use `@v1` to always get the latest stable release within the `v1.x` series, or use `@v1.0.0` for fully reproducible builds.
+
+### 🔁 Example Usage
+
+```yaml
+jobs:
+  build:
+    uses: gitopsmanager/k8s-build/.github/workflows/build.yaml@v1
+    # or pin to:
+    # uses: gitopsmanager/k8s-build/.github/workflows/build.yaml@v1.0.0
+```
+
+### 🔢 Versioning Strategy
+
+| Version Tag | Purpose                                 |
+|-------------|------------------------------------------|
+| `v1`        | Floating tag pointing to latest stable `v1.x` |
+| `v1.0.0`    | Immutable release — initial stable version |
+| `v1.0.1+`   | Patches and non-breaking improvements |
+| `v2`        | Reserved for future breaking changes     |
+
+---
+
+To see all available versions, check the [Releases tab](https://github.com/gitopsmanager/k8s-build/releases).
 
 ---
 
