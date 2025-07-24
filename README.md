@@ -1,17 +1,49 @@
-# 🚀 Reusable GitHub Workflow: Multi-Cloud Docker Build with buildkit
+# 🚀 Reusable GitHub Workflow: Multi-Cloud Docker Build with BuildKit
 
 This reusable GitHub Actions workflow builds and pushes Docker images using [BuildKit](https://github.com/moby/buildkit), with support for:
 
-
-- ✅ AWS ECR via Pod Identity or AWS secrets
-- ✅ Azure ACR via Azure service principal
-- ✅ Single build, dual push support (e.g., AWS + Azure)
-- ✅ GitHub-hosted and self-hosted runners (e.g., GitHub ARC)
-- ✅ Automatic fallback tag using GitHub run ID
+- ✅ AWS ECR via Pod Identity or AWS credentials  
+- ✅ Azure ACR via Azure service principal  
+- ✅ Build once, push to AWS, Azure, or both  
+- ✅ GitHub-hosted and GitHub ARC (self-hosted) runners  
+- ✅ Automatic fallback tag using GitHub run ID  
 
 ---
 
-## ⚙️ Inputs
+## ⚙️ Runtime Requirements
+
+| Environment         | Requirements                                                                 |
+|---------------------|------------------------------------------------------------------------------|
+| GitHub-hosted       | No setup required – uses Docker with `setup-buildx-action`                  |
+| Self-hosted (ARC)   | Requires a running `buildkitd` daemon listening on `tcp://localhost:12345`  |
+
+On GitHub ARC (self-hosted runners), this workflow assumes that a [BuildKit](https://github.com/moby/buildkit) daemon is running as a **sidecar container** in the same pod as the ARC runner.
+
+The `buildkitd` sidecar should:
+- Be reachable at `localhost:12345`
+- Be configured with **minimal required Linux capabilities** (see note below)
+- Not require privileged mode or Docker socket access
+
+---
+
+## 🛡️ Security Note
+
+ℹ️ In our internal deployments, `buildkitd` runs in a hardened sidecar with minimal Linux capabilities (`SYS_ADMIN`, `CHOWN`, `FOWNER`, `DAC_OVERRIDE`) and does **not** require privileged mode or access to the Docker socket.
+
+---
+
+## 🧑‍💻 Runner Compatibility
+
+This workflow is compatible with both:
+
+- **GitHub-hosted runners**, e.g. `ubuntu-latest`
+- **Self-hosted ARC runners**, e.g. `aws-linux-self-hosted-build-runner`
+
+Use the `runner` input to specify the appropriate runner label.
+
+---
+
+## 🔧 Inputs
 
 | Name             | Required | Type    | Description |
 |------------------|----------|---------|-------------|
@@ -20,101 +52,70 @@ This reusable GitHub Actions workflow builds and pushes Docker images using [Bui
 | `tag`            | ❌        | string  | Optional tag. If omitted, uses GitHub `run_id`. If provided, both it and the `run_id` will be pushed |
 | `build_file`     | ❌        | string  | Path to the Dockerfile (relative to context) |
 | `extra_args`     | ❌        | string  | Additional flags passed to buildkit |
-| `aws_region`     | ❌        | string  | AWS region for ECR (default: `eu-west-1`) |
+| `aws_region`     | ❌        | string  | AWS region for ECR |
 | `aws_registry`   | ❌        | string  | AWS ECR registry hostname |
 | `azure_registry` | ❌        | string  | Azure ACR registry hostname |
 | `push_aws`       | ❌        | boolean | Set `true` to push to AWS ECR (default: `false`) |
 | `push_azure`     | ❌        | boolean | Set `true` to push to Azure ACR (default: `false`) |
 | `runner`         | ❌        | string  | Runner label (default: `ubuntu-latest`) |
+| `use_azure_secrets` | ❌    | boolean | Whether Azure credentials are passed manually (default: `false`) |
 
 ---
 
 ## 🔐 Secrets
 
-These are only needed if your runners do not use pod identity (AWS) or managed identity (Azure):
+These are only needed if you're not using pod/managed identity:
 
 | Secret                 | Description |
 |------------------------|-------------|
 | `AWS_ACCESS_KEY_ID`    | AWS IAM access key |
 | `AWS_SECRET_ACCESS_KEY`| AWS IAM secret key |
-| `AWS_SESSION_TOKEN`    | Optional for STS/SSO temporary credentials |
-| `AZURE_CLIENT_ID`      | Azure app registration client ID |
+| `AZURE_CLIENT_ID`      | Azure app client ID |
 | `AZURE_CLIENT_SECRET`  | Azure client secret |
 | `AZURE_TENANT_ID`      | Azure AD tenant ID |
 
 ---
 
-## 🛠 Actions Used
+---
 
-| Action | Version | Purpose |
-|--------|---------|---------|
-| [actions/checkout](https://github.com/actions/checkout) | `v4` | Clones your repo for context |
-| [azure/login](https://github.com/Azure/login) | `v1` | Secure Azure authentication for ACR |
+## 🔐 Identity Options
 
+This workflow supports multiple authentication mechanisms depending on your cloud platform and runner environment.
+
+### ✅ AWS Authentication Options
+
+| Method                    | Supported? | Notes |
+|---------------------------|------------|-------|
+| **Pod Identity (IRSA)**   | ✅ Yes      | Recommended for self-hosted ARC runners on EKS. Automatically used when AWS credentials are not supplied. |
+| **Node IAM Role**         | ✅ Yes      | Supported if the ARC runner pod runs on an EC2 instance with an IAM role attached. |
+| **AWS Secrets**           | ✅ Yes      | Provide `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. If not provided, AWS SDK falls back to pod or instance identity. |
+
+> ℹ️ You **do not need a flag** to indicate how AWS credentials are supplied.  
+> The AWS CLI and SDKs automatically use available environment variables, pod identity, or instance roles based on availability and precedence.
+
+✅ Regardless of the authentication method, `aws ecr get-login-password` is still required to authenticate Docker to ECR.
 
 ---
 
-## 🧑‍💻 Runner Compatibility
+### ✅ Azure Authentication Options
 
-This workflow was originally built for **GitHub ARC (self-hosted)** runners, but is fully compatible with **GitHub-hosted runners** such as:
+| Method                             | Supported? | Notes |
+|------------------------------------|------------|-------|
+| **Azure Workload Identity (Pod Identity)** | ✅ Yes | Recommended for self-hosted ARC runners on AKS. Set `use_azure_secrets: false`. |
+| **Node Managed Identity**         | ✅ Yes      | Supported when the ARC runner runs on a VM/VMSS with a system-assigned or user-assigned identity. Use `use_azure_secrets: false`. |
+| **Azure Secrets**                 | ✅ Yes      | Provide `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, and `AZURE_TENANT_ID`. Must explicitly set `use_azure_secrets: true`. |
 
-```yaml
-runs-on: ubuntu-latest
-```
-
-You can configure runner labels via the `runner` input.
-
----
-
-## ⚠️ GitHub ARC Runner Note
-
-If you are using GitHub ARC (Actions Runner Controller) with self-hosted runners, be aware:
-
-- The default `latest` GitHub ARC runner image **does not include Docker**
-- This workflow uses `buildctl` to build the container
-- You must either:
-  - Use a custom ARC runner image that includes Docker
-  - Or mount the Docker socket from the host  
-    *(safe only in single-tenant or isolated node pools)*
-
-Mounting the Docker socket gives the container full control of the Docker daemon and should **not** be used in shared Kubernetes environments.
-
-Example pod override to mount the Docker socket:
-```yaml
-volumeMounts:
-  - name: docker-sock
-    mountPath: /var/run/docker.sock
-volumes:
-  - name: docker-sock
-    hostPath:
-      path: /var/run/docker.sock
-```
----
-
-## 🏗 How It Works: Single Build, Multi-Registry Push
-
-This workflow performs the build **once** using BuildKit, and dynamically constructs the `--output` argument based on which registries (AWS and/or Azure) are enabled.
-
-- Builds the image from your `Dockerfile` using `buildctl`
-- Dynamically includes one or more `name=...` targets in the `--output` flag
-- Pushes to AWS ECR and/or Azure ACR in a single efficient operation
-
-> ✅ This ensures the image is built once and pushed to multiple registries without repeating or re-evaluating the build context.
-
+> ⚠️ Azure requires an explicit `use_azure_secrets` flag.  
+> If set to `false`, the workflow assumes federated identity or node-managed identity.
 
 ---
 
-## 🧪 Beta Release & Versioning
+### 🧪 Credential Selection Behavior
 
-This workflow is currently in **beta**. While the structure is stable and production-ready for most use cases, we recommend starting with pinned versions (e.g. `@v1`) as best practice.
-
-### Versioning Strategy:
-
-- `v1`: Current stable release (latest in v1.x series)
-- `v1.0.0`, `v1.0.1`, etc.: Pinned versions for reproducible builds
-- Future breaking changes will be published under `v2`, `v3`, etc.
-
-> We encourage feedback and contributions as we move toward a fully stable release cycle.
+| Cloud  | Secrets Provided? | Fallback Behavior                    |
+|--------|--------------------|--------------------------------------|
+| AWS    | Optional           | Falls back to pod or node identity   |
+| Azure  | Must be explicit   | Requires `use_azure_secrets: true` if using secrets |
 
 ---
 
@@ -138,6 +139,29 @@ jobs:
       AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
 ```
+
+---
+
+## 🛠 Actions Used
+
+| Action | Version | Purpose |
+|--------|---------|---------|
+| [actions/checkout](https://github.com/actions/checkout) | `v4` | Clones your repo for context |
+| [azure/login](https://github.com/Azure/login) | `v1` | Secure Azure authentication for ACR |
+| [docker/setup-buildx-action](https://github.com/docker/setup-buildx-action) | `v3` | Enables BuildKit for GitHub-hosted runners |
+| [docker/build-push-action](https://github.com/docker/build-push-action) | `v5` | Performs the BuildKit build and push |
+
+---
+
+## 🧪 Versioning Strategy
+
+This workflow is currently in **beta**. While it's stable and production-ready for most use cases, we recommend starting with pinned versions (e.g. `@v1`) as best practice.
+
+| Version    | Description                         |
+|------------|-------------------------------------|
+| `v1`       | Stable major version                |
+| `v1.0.0`   | Exact pinned release for reproducibility |
+| `v2`, `v3` | Reserved for future breaking changes |
 
 ---
 
