@@ -177,14 +177,15 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: 🐳 Set up Docker Buildx
-        if: !contains(runner.name, 'self-hosted')
+        if: "!contains(runner.name, 'self-hosted')"
         uses: docker/setup-buildx-action@v3
 
       - name: 🔧 Set up side car BuildKit builder
-        if: contains(runner.name, 'self-hosted')
+        if: "contains(runner.name, 'self-hosted')"
         run: |
           docker buildx create --name remote-builder --driver remote --use tcp://localhost:12345
           docker buildx inspect --bootstrap
+
 
 
       - name: 🏗️ Build and Push image(s)
