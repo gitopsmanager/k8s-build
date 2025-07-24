@@ -11,6 +11,12 @@ Build and push Docker images to AWS ECR or Azure ACR using Docker (on GitHub-hos
 - ✅ Build once, push to AWS, Azure, or both  
 - ✅ Automatically tags images with the GitHub run ID, and optionally with a custom tag if provided.
 
+> ⚠️ **Alpha Notice**  
+> This workflow is currently in **alpha** while Azure support is being finalized.  
+> AWS ECR builds via Docker (hosted) and BuildKit (self-hosted) are working and production-ready.  
+> Azure ACR support will be validated and stabilized before tagging a `v1.0.0` release.
+
+
 ---
 
 ## ⚙️ Runtime Requirements
@@ -157,39 +163,41 @@ jobs:
 
 ---
 
-## 📦 Stable Version & Versioning Strategy
+---
 
-This workflow is now production-ready and follows [semantic versioning](https://semver.org/).
+## 📦 Alpha Status & Planned Versioning Strategy
 
-### ✅ Current Stable Release
+> ⚠️ **This workflow is currently in alpha.**  
+> It has been tested on AWS (Docker + BuildKit), but Azure ACR support is still undergoing validation.  
+> Once Azure support is confirmed, a stable `v1.0.0` release will be published.
 
-- **Tag:** `v1`
-- **Pinned Version:** `v1.0.0`
+### 🚧 Current State
 
-Use `@v1` to always get the latest stable release within the `v1.x` series, or use `@v1.0.0` for fully reproducible builds.
+- No official version tags yet
+- Use `@main` for now while testing
+- Breaking changes may still occur until `v1.0.0` is tagged
 
-### 🔁 Example Usage
-
-```yaml
-jobs:
-  build:
-    uses: gitopsmanager/k8s-build/.github/workflows/build.yaml@v1
-    # or pin to:
-    # uses: gitopsmanager/k8s-build/.github/workflows/build.yaml@v1.0.0
-```
-
-### 🔢 Versioning Strategy
+### 🔢 Planned Versioning Strategy
 
 | Version Tag | Purpose                                 |
 |-------------|------------------------------------------|
 | `v1`        | Floating tag pointing to latest stable `v1.x` |
-| `v1.0.0`    | Immutable release — initial stable version |
-| `v1.0.1+`   | Patches and non-breaking improvements |
+| `v1.0.0`    | First stable release once all platforms are tested |
+| `v1.0.1+`   | Patches and improvements (non-breaking) |
 | `v2`        | Reserved for future breaking changes     |
+
+### 🧪 Example Usage (for testing)
+
+```yaml
+jobs:
+  build:
+    uses: gitopsmanager/k8s-build/.github/workflows/build.yaml@main
+```
 
 ---
 
-To see all available versions, check the [Releases tab](https://github.com/gitopsmanager/k8s-build/releases).
+To be notified when stable tags are available, watch the [Releases tab](https://github.com/gitopsmanager/k8s-build/releases).
+
 
 ---
 
