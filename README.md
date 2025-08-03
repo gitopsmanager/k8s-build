@@ -209,4 +209,9 @@ To be notified when stable tags are available, watch the [Releases tab](https://
 
 ## 📄 License
 
-MIT © 2025 Affinity7 Consulting Ltd
+
+This project is licensed under the MIT License. See [LICENSE](./LICENSE) for details.
+
+Third-party components used in GitHub Actions workflows and shell scripts are documented in:
+- [THIRD-PARTY-ACTIONS-AND-TOOLS.md](./THIRD-PARTY-ACTIONS-AND-TOOLS.md)
+
